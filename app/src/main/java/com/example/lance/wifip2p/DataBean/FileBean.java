@@ -38,4 +38,8 @@ public class FileBean {
     public String getFileSize() {
         return fileSize;
     }
+
+    public boolean isFileSelected() {
+        return isFileSelected;
+    }
 }

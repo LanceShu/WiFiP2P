@@ -8,8 +8,11 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 
+import com.example.lance.wifip2p.Adapter.FileAdapter;
 import com.example.lance.wifip2p.DataBean.FileBean;
 import com.example.lance.wifip2p.DataBean.WordList;
 import com.example.lance.wifip2p.R;
@@ -20,8 +23,9 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
 
     private Handler postHandler = new Handler();
-    private List<FileBean> wordList;
+    public static List<FileBean> wordList;
     private ProgressDialog progressDialog;
+    private RecyclerView fileList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,8 +38,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initWight() {
+        fileList = findViewById(R.id.file_list);
         progressDialog = new ProgressDialog(this);
-        progressDialog.setMessage("Loading...");
+        progressDialog.setMessage("Scanning...");
         if (!progressDialog.isShowing()) {
             progressDialog.show();
         }
@@ -80,16 +85,17 @@ public class MainActivity extends AppCompatActivity {
             public void run() {
                 // Get all Word files;
                 wordList = WordList.getWordListInstance(MainActivity.this);
-                if (wordList != null) {
-                    for (FileBean wordFile : wordList) {
-                        Log.e("WordFile", wordFile.getFileName() + "-"
-                                + wordFile.getFilePath() + "-" + wordFile.getFileSize());
-                    }
-                }
                 // If all data are scanned, make the progressDialog dismiss;
                 postHandler.post(new Runnable() {
                     @Override
                     public void run() {
+                        if (wordList != null) {
+                            LinearLayoutManager manager = new LinearLayoutManager(MainActivity.this);
+                            manager.setOrientation(LinearLayoutManager.VERTICAL);
+                            fileList.setLayoutManager(manager);
+                            FileAdapter adapter = new FileAdapter(MainActivity.this, wordList, R.mipmap.ftf_word);
+                            fileList.setAdapter(adapter);
+                        }
                         progressDialog.dismiss();
                     }
                 });
