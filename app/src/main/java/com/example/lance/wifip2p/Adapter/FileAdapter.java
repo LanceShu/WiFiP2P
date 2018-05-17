@@ -12,6 +12,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
+import com.example.lance.wifip2p.Content;
 import com.example.lance.wifip2p.DataBean.FileBean;
 import com.example.lance.wifip2p.DataBean.SendFileBean;
 import com.example.lance.wifip2p.R;
@@ -61,24 +62,34 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
         if (fileBean.getFileSize().equals("unknown")) {
             holder.fileSize.setText(fileBean.getFileSize());
         } else {
-            holder.fileSize.setText(fileBean.getFileSize() + " M");
+            long fileSize = Long.parseLong(fileBean.getFileSize());
+            double size = (double) (fileSize) / 1024 / 1024;
+            holder.fileSize.setText((size + "").substring(0, 4) + " M");
         }
         holder.fileLayout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 SendFileBean sendFileBean = new SendFileBean();
-                Log.e("isSelected", fileBean.isFileSelected() + "");
                 if(fileBean.isFileSelected()){
                     holder.fileSelected.setImageResource(R.mipmap.select1);
                     fileBeans.get(filePosition).setFileSelected(false);
+                    if (Content.selectedFileList != null && Content.selectedFileList.size() != 0) {
+                        for (int i = 0; i < Content.selectedFileList.size(); i++) {
+                            if (Content.selectedFileList.get(i).getSendPath().equals(fileBeans.get(filePosition).getFilePath())) {
+                                Content.selectedFileList.remove(i);
+                                break;
+                            }
+                        }
+                    }
                 }else{
                     holder.fileSelected.setImageResource(R.mipmap.select2);
                     fileBeans.get(filePosition).setFileSelected(true);
                     sendFileBean.setSendName(fileBean.getFileName());
                     sendFileBean.setSendPath(fileBean.getFilePath());
                     sendFileBean.setSendSize(fileBean.getFileSize());
-                    sendFileBean.setSendIcon(mipmapID+"");
+                    sendFileBean.setSendIcon(mipmapID + "");
                     sendFileBean.setSendType("file");
+                    Content.selectedFileList.add(sendFileBean);
                 }
             }
         });

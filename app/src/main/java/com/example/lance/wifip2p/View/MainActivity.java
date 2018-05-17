@@ -11,26 +11,36 @@ import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 
 import com.example.lance.wifip2p.Adapter.FileAdapter;
+import com.example.lance.wifip2p.Content;
 import com.example.lance.wifip2p.DataBean.FileBean;
+import com.example.lance.wifip2p.DataBean.SendFileBean;
 import com.example.lance.wifip2p.DataBean.WordList;
 import com.example.lance.wifip2p.R;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private Handler postHandler = new Handler();
     public static List<FileBean> wordList;
     private ProgressDialog progressDialog;
     private RecyclerView fileList;
+    private Button sendFileBtn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        if (Content.selectedFileList == null) {
+            Content.selectedFileList = new ArrayList<>();
+        } else {
+            Content.selectedFileList.clear();
+        }
         // Dynamic application permissions;
         CheckPermission();
         // Init all wights;
@@ -39,11 +49,13 @@ public class MainActivity extends AppCompatActivity {
 
     private void initWight() {
         fileList = findViewById(R.id.file_list);
+        sendFileBtn = findViewById(R.id.send_bt);
         progressDialog = new ProgressDialog(this);
         progressDialog.setMessage("Scanning...");
         if (!progressDialog.isShowing()) {
             progressDialog.show();
         }
+        sendFileBtn.setOnClickListener(this);
     }
 
     private void CheckPermission() {
@@ -101,5 +113,16 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         }).start();
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.send_bt:
+                for (SendFileBean fileBean : Content.selectedFileList) {
+                    Log.e("SendFileBean", fileBean.getSendName() + "  " + fileBean.getSendPath() + "  " + fileBean.getSendSize());
+                }
+                break;
+        }
     }
 }

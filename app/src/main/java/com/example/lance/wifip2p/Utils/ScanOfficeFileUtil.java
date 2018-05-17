@@ -65,8 +65,7 @@ public class ScanOfficeFileUtil {
                     file.setFilePath("unknown");
                 }
                 if (cursor.getInt(2) != 0) {
-                    Float size = cursor.getInt(2) / 1024F / 1024F;
-                    file.setFileSize(size.toString().substring(0, 3));
+                    file.setFileSize(cursor.getInt(2) + "");
                 } else {
                     file.setFileSize("unknown");
                 }
