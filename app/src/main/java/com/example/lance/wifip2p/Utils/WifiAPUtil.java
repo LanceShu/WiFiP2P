@@ -46,9 +46,13 @@ public class WifiAPUtil {
                 WifiConfiguration netConfig = new WifiConfiguration();
                 if (SSID != null) {
                     netConfig.SSID = SSID;
+                } else {
+                    netConfig.SSID = defSSID;
                 }
                 if (password != null) {
                     netConfig.preSharedKey = password;
+                } else {
+                    netConfig.preSharedKey = defPassword;
                 }
                 netConfig.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.OPEN);
                 netConfig.allowedProtocols.set(WifiConfiguration.Protocol.RSN);
