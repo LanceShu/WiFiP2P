@@ -69,7 +69,7 @@ public class BaseActivity extends AppCompatActivity implements Wifip2pActionList
 
     @Override
     public void onDeviceInfo(WifiP2pDevice wifiP2pDevice) {
-        Log.e("BaseActivity", "当前的的设备名称: " + wifiP2pDevice.deviceName);
+        Log.e("BaseActivity", "当前的的设备名称: " + wifiP2pDevice.deviceName + " --- " + wifiP2pDevice.deviceAddress);
     }
 
     @Override
