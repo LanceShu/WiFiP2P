@@ -1,11 +1,15 @@
 apply plugin: 'com.android.application'
 
 android {
+    signingConfigs {
+        lance {
+        }
+    }
     compileSdkVersion 26
     defaultConfig {
         applicationId "com.example.lance.wifip2p"
         minSdkVersion 21
-        targetSdkVersion 26
+        targetSdkVersion 22
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"

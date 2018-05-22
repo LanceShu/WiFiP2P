@@ -1,14 +1,14 @@
 package com.example.lance.wifip2p.View;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.pm.PackageManager;
-import android.net.wifi.WpsInfo;
-import android.net.wifi.p2p.WifiP2pConfig;
+import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pDevice;
-import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.widget.LinearLayoutManager;
@@ -16,34 +16,74 @@ import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
 
+import com.example.lance.wifip2p.Adapter.DeviceAdapter;
 import com.example.lance.wifip2p.Adapter.FileAdapter;
 import com.example.lance.wifip2p.Content;
 import com.example.lance.wifip2p.DataBean.FileBean;
 import com.example.lance.wifip2p.DataBean.SendFileBean;
 import com.example.lance.wifip2p.DataBean.WordList;
 import com.example.lance.wifip2p.R;
+import com.example.lance.wifip2p.Utils.WifiAPManager;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 public class MainActivity extends BaseActivity implements View.OnClickListener {
 
     private Handler postHandler = new Handler();
+    private WifiManager wifiManager;
+    private WifiAPManager wifiAPManager;
+
     public static List<FileBean> wordList;
     private List<WifiP2pDevice> deviceList = new ArrayList<>();
+    private DeviceAdapter deviceAdapter;
+
+    public static final int SCAN_WIFI_DEVICE = 1;
+    public static final int CREATE_WIFI_DEVICE = 2;
+    public static final int WIFI_DEVICE_CONNECTED = 3;
+    public static final int WIFI_STATE_CLOSED = 4;
+    private int wifiType;
 
     private ProgressDialog progressDialog;
+    private Dialog devicesDialog;
     private RecyclerView fileList;
     private Button sendFileBtn;
     private Button receiveFileBtn;
+    private Button scanWifiBtn;
+    private Button createWifiBtn;
+
+    public static MainHanlder mainHanlder;
+
+    public static class MainHanlder extends Handler {
+
+        private WeakReference<MainActivity> activityWeakReference;
+
+        MainHanlder(MainActivity activity) {
+            activityWeakReference = new WeakReference<>(activity);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            MainActivity activity = activityWeakReference.get();
+            if (activity != null) {
+                switch (msg.what) {
+
+                }
+            }
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        mainHanlder = new MainHanlder(this);
+        wifiAPManager = new WifiAPManager(this);
+        if (wifiManager == null) {
+            wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+        }
         if (Content.selectedFileList == null) {
             Content.selectedFileList = new ArrayList<>();
         } else {
@@ -55,10 +95,21 @@ public class MainActivity extends BaseActivity implements View.OnClickListener {
         initWight();
     }
 
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (progressDialog.isShowing()) {
+            progressDialog.dismiss();
+        }
+    }
+
     private void initWight() {
         fileList = findViewById(R.id.file_list);
         sendFileBtn = findViewById(R.id.send_bt);
         receiveFileBtn = findViewById(R.id.receive_bt);
+        scanWifiBtn = findViewById(R.id.scan_wifi_bt);
+        createWifiBtn = findViewById(R.id.create_wifi_bt);
+
         progressDialog = new ProgressDialog(this);
         progressDialog.setMessage("Scanning files...");
         if (!progressDialog.isShowing()) {
@@ -66,6 +117,19 @@ public class MainActivity extends BaseActivity implements View.OnClickListener {
         }
         sendFileBtn.setOnClickListener(this);
         receiveFileBtn.setOnClickListener(this);
+        scanWifiBtn.setOnClickListener(this);
+        createWifiBtn.setOnClickListener(this);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (;;) {
+                    if (wifiAPManager.getConnectedIP().size() > 0) {
+                        Log.e("device", wifiAPManager.getConnectedIP().get(0));
+                        break;
+                    }
+                }
+            }
+        }).start();
     }
 
     private void CheckPermission() {
@@ -78,6 +142,10 @@ public class MainActivity extends BaseActivity implements View.OnClickListener {
                 != PackageManager.PERMISSION_GRANTED) {
             permissionList.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
         }
+//        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_SETTINGS)
+//                != PackageManager.PERMISSION_GRANTED) {
+//            permissionList.add(Manifest.permission.WRITE_SETTINGS);
+//        }
         if (permissionList.isEmpty()) {
             // If do not apply for application permissions, we can do some operation;
             initData();
@@ -136,99 +204,31 @@ public class MainActivity extends BaseActivity implements View.OnClickListener {
                 for (SendFileBean fileBean : Content.selectedFileList) {
                     Log.e("SendFileBean", fileBean.getSendName() + "  " + fileBean.getSendPath() + "  " + fileBean.getSendSize());
                 }
-                progressDialog.setMessage("Scanning devices...");
-                progressDialog.show();
-                findServer();
                 break;
             case R.id.receive_bt:
-                createGroup();
+                break;
+            case R.id.scan_wifi_bt:
+                // clear the deviceList when click the button;
+                deviceList.clear();
+                wifiType = SCAN_WIFI_DEVICE;
+                // open the scanning wifi devices dialog;
+                devicesDialog = new Dialog(MainActivity.this);
+                devicesDialog.setContentView(R.layout.scan_wifi_devices);
+                RecyclerView devicesList = devicesDialog.findViewById(R.id.devices_list);
+                deviceAdapter = new DeviceAdapter(MainActivity.this, deviceList);
+                LinearLayoutManager manager = new LinearLayoutManager(this);
+                manager.setOrientation(LinearLayoutManager.VERTICAL);
+                devicesList.setLayoutManager(manager);
+                devicesList.setAdapter(deviceAdapter);
+                devicesDialog.show();
+                break;
+            case R.id.create_wifi_bt:
+                if (!wifiAPManager.isWifiApEnabled()) {
+                    wifiAPManager.createAndStartWifiAp(null, null, true);
+                } else {
+                    wifiAPManager.closeWifiAp();
+                }
                 break;
         }
-    }
-
-    // Find the all devices can shot wifi;
-    private void findServer() {
-        wifiP2pManager.discoverPeers(channel, new WifiP2pManager.ActionListener() {
-            @Override
-            public void onSuccess() {
-                Log.e("SendBtn", "搜索设备成功");
-            }
-
-            @Override
-            public void onFailure(int i) {
-                Log.e("SendBtn", "搜索设备失败");
-            }
-        });
-    }
-
-    // connect the device;
-    private void connectDevice(WifiP2pDevice wifiP2pDevice) {
-        WifiP2pConfig config = new WifiP2pConfig();
-        if (wifiP2pDevice != null) {
-            config.deviceAddress = wifiP2pDevice.deviceAddress;
-            config.wps.setup = WpsInfo.PBC;
-            wifiP2pManager.connect(channel, config, new WifiP2pManager.ActionListener() {
-                @Override
-                public void onSuccess() {
-                    Toast.makeText(MainActivity.this, "连接成功", Toast.LENGTH_SHORT).show();
-                }
-
-                @Override
-                public void onFailure(int i) {
-                    Toast.makeText(MainActivity.this, "连接失败", Toast.LENGTH_SHORT).show();
-                }
-            });
-        }
-    }
-
-    @Override
-    public void onPeersInfo(Collection<WifiP2pDevice> wifiP2pDeviceList) {
-        super.onPeersInfo(wifiP2pDeviceList);
-        for (WifiP2pDevice device : wifiP2pDeviceList) {
-            if (!deviceList.contains(device)) {
-                deviceList.add(device);
-            }
-        }
-        progressDialog.dismiss();
-        showDeviceInfo();
-    }
-
-    private void showDeviceInfo() {
-        if (deviceList != null) {
-            for (WifiP2pDevice device : deviceList) {
-                Log.e("设备: ", device.deviceName + "----" + device.deviceAddress);
-            }
-        }
-    }
-
-    // create the receiver's wifi group;
-    public void createGroup() {
-        wifiP2pManager.createGroup(channel, new WifiP2pManager.ActionListener() {
-            @Override
-            public void onSuccess() {
-                Toast.makeText(MainActivity.this, "创建群组成功", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onFailure(int i) {
-                Toast.makeText(MainActivity.this, "创建群组失败,请移除已有的组群或者连接同一WIFI重试", Toast.LENGTH_SHORT).show();
-                removeGroup();
-            }
-        });
-    }
-
-    // remove the receiver's wifi group;
-    public void removeGroup() {
-        wifiP2pManager.removeGroup(channel, new WifiP2pManager.ActionListener() {
-            @Override
-            public void onSuccess() {
-                Toast.makeText(MainActivity.this, "移除群组成功", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onFailure(int i) {
-                Toast.makeText(MainActivity.this, "移除组群失败,请创建组群重试", Toast.LENGTH_SHORT).show();
-            }
-        });
     }
 }

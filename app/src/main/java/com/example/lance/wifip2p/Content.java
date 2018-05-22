@@ -1,6 +1,5 @@
 package com.example.lance.wifip2p;
 
-import com.example.lance.wifip2p.DataBean.FileBean;
 import com.example.lance.wifip2p.DataBean.SendFileBean;
 
 import java.util.List;
@@ -13,6 +12,8 @@ import java.util.List;
 public class Content {
 
     public static final int SEND_FILE_LIST = 1;
+
+    public static final int UPDATE_DEVICES_INFO = 2;
 
     public static List<SendFileBean> selectedFileList;
 }
