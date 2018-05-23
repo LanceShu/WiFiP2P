@@ -18,12 +18,6 @@ import java.util.List;
  */
 
 public class WifiAPManager {
-    public static final int WIFI_AP_STATE_DISABLING = 0;
-    public static final int WIFI_AP_STATE_DISABLED = 0;
-    public static final int WIFI_AP_STATE_ENABLING = 0;
-    public static final int WIFI_AP_STATE_ENABLED = 0;
-    public static final int WIFI_AP_STATE_FAILED = 0;
-
     private WifiManager wifiManager;
     private Context context;
     private final String defaultSSID = "WIFI_AP_TEST";
@@ -44,6 +38,7 @@ public class WifiAPManager {
             WifiConfiguration netConfig = new WifiConfiguration();
             netConfig.SSID = (SSID != null ? SSID : defaultSSID);
             netConfig.preSharedKey = (password != null ? password : defaultPASS);
+            netConfig.hiddenSSID = true;
             netConfig.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.OPEN);
             netConfig.allowedProtocols.set(WifiConfiguration.Protocol.RSN);
             netConfig.allowedProtocols.set(WifiConfiguration.Protocol.WPA);

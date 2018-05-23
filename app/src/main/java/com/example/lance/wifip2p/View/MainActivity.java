@@ -3,50 +3,45 @@ package com.example.lance.wifip2p.View;
 import android.Manifest;
 import android.app.Dialog;
 import android.app.ProgressDialog;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.net.DhcpInfo;
-import android.net.wifi.WifiInfo;
+import android.net.ConnectivityManager;
 import android.net.wifi.WifiManager;
-import android.net.wifi.p2p.WifiP2pDevice;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
-import com.example.lance.wifip2p.Adapter.DeviceAdapter;
+import com.example.lance.wifip2p.Adapter.WifiAdapter;
 import com.example.lance.wifip2p.Adapter.FileAdapter;
 import com.example.lance.wifip2p.Content;
 import com.example.lance.wifip2p.DataBean.FileBean;
 import com.example.lance.wifip2p.DataBean.SendFileBean;
 import com.example.lance.wifip2p.DataBean.WordList;
 import com.example.lance.wifip2p.R;
+import com.example.lance.wifip2p.Receiver.WifiAPBroadcastReceiver;
 import com.example.lance.wifip2p.Utils.WifiAPManager;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends BaseActivity implements View.OnClickListener {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private Handler postHandler = new Handler();
     private WifiManager wifiManager;
     private WifiAPManager wifiAPManager;
+    private WifiAPBroadcastReceiver broadcastReceiver;
 
     public static List<FileBean> wordList;
-    private List<WifiP2pDevice> deviceList = new ArrayList<>();
-    private DeviceAdapter deviceAdapter;
-
-    public static final int SCAN_WIFI_DEVICE = 1;
-    public static final int CREATE_WIFI_DEVICE = 2;
-    public static final int WIFI_DEVICE_CONNECTED = 3;
-    public static final int WIFI_STATE_CLOSED = 4;
-    private int wifiType;
+    private WifiAdapter deviceAdapter;
 
     private ProgressDialog progressDialog;
     private Dialog devicesDialog;
@@ -71,7 +66,12 @@ public class MainActivity extends BaseActivity implements View.OnClickListener {
             MainActivity activity = activityWeakReference.get();
             if (activity != null) {
                 switch (msg.what) {
-
+                    case Content.SCANNED_WIFI_AP_DEVICE:
+                        if (activity.deviceAdapter != null) {
+                            Log.e("adapter", Content.scanResultList.size() + "");
+                            activity.deviceAdapter.notifyDataSetChanged();
+                        }
+                        break;
                 }
             }
         }
@@ -89,10 +89,38 @@ public class MainActivity extends BaseActivity implements View.OnClickListener {
         } else {
             Content.selectedFileList.clear();
         }
+        if (Content.scanResultList == null) {
+            Content.scanResultList = new ArrayList<>();
+        } else {
+            Content.scanResultList.clear();
+        }
         // Dynamic application permissions;
         CheckPermission();
         // Init all wights;
         initWight();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Init the BroadcastReceiver;
+        initBroadcastReceiver();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(broadcastReceiver);
+    }
+
+    private void initBroadcastReceiver() {
+        broadcastReceiver = new WifiAPBroadcastReceiver(wifiManager, this);
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
+        filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
+        filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
+        filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
+        registerReceiver(broadcastReceiver, filter);
     }
 
     @Override
@@ -101,6 +129,11 @@ public class MainActivity extends BaseActivity implements View.OnClickListener {
         if (progressDialog.isShowing()) {
             progressDialog.dismiss();
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
     }
 
     private void initWight() {
@@ -125,8 +158,6 @@ public class MainActivity extends BaseActivity implements View.OnClickListener {
                 for (;;) {
                     if (wifiAPManager.getConnectedIP().size() > 0) {
                         Log.e("Connected_Device", wifiAPManager.getConnectedIP().get(0));
-                        DhcpInfo info = wifiManager.getDhcpInfo();
-                        WifiInfo wifiInfo = wifiManager.getConnectionInfo();
                         break;
                     }
                 }
@@ -144,10 +175,6 @@ public class MainActivity extends BaseActivity implements View.OnClickListener {
                 != PackageManager.PERMISSION_GRANTED) {
             permissionList.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
         }
-//        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_SETTINGS)
-//                != PackageManager.PERMISSION_GRANTED) {
-//            permissionList.add(Manifest.permission.WRITE_SETTINGS);
-//        }
         if (permissionList.isEmpty()) {
             // If do not apply for application permissions, we can do some operation;
             initData();
@@ -210,7 +237,13 @@ public class MainActivity extends BaseActivity implements View.OnClickListener {
             case R.id.receive_bt:
                 break;
             case R.id.scan_wifi_bt:
-                displayAlldevices();
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        searchWifiAP();
+                    }
+                }).start();
+                displayAllWifiAps();
                 break;
             case R.id.create_wifi_bt:
                 if (!wifiAPManager.isWifiApEnabled()) {
@@ -222,15 +255,19 @@ public class MainActivity extends BaseActivity implements View.OnClickListener {
         }
     }
 
-    private void displayAlldevices() {
-        // clear the deviceList when click the button;
-        deviceList.clear();
-        wifiType = SCAN_WIFI_DEVICE;
+    private void searchWifiAP() {
+        if (!wifiManager.isWifiEnabled()) {
+            wifiManager.setWifiEnabled(true);
+        }
+        wifiManager.startScan();
+    }
+
+    private void displayAllWifiAps() {
         // open the scanning wifi devices dialog;
         devicesDialog = new Dialog(MainActivity.this);
-        devicesDialog.setContentView(R.layout.scan_wifi_devices);
+        devicesDialog.setContentView(R.layout.scan_wifi_aps);
         RecyclerView devicesList = devicesDialog.findViewById(R.id.devices_list);
-        deviceAdapter = new DeviceAdapter(MainActivity.this, deviceList);
+        deviceAdapter = new WifiAdapter(MainActivity.this, Content.scanResultList);
         LinearLayoutManager manager = new LinearLayoutManager(this);
         manager.setOrientation(LinearLayoutManager.VERTICAL);
         devicesList.setLayoutManager(manager);

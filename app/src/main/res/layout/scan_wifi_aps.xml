@@ -7,7 +7,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="30dp"
-        android:text="Scanning devices..."
+        android:text="Scanning wifi..."
         android:gravity="center"
         android:textSize="18sp"/>
 
