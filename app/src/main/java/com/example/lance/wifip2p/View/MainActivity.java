@@ -6,6 +6,7 @@ import android.app.ProgressDialog;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
+import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -39,6 +40,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private WifiManager wifiManager;
     private WifiAPManager wifiAPManager;
     private WifiAPBroadcastReceiver broadcastReceiver;
+    private WifiConfiguration configuration;
 
     public static List<FileBean> wordList;
     private WifiAdapter deviceAdapter;
@@ -50,6 +52,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Button receiveFileBtn;
     private Button scanWifiBtn;
     private Button createWifiBtn;
+    private RecyclerView wifiList;
 
     public static MainHanlder mainHanlder;
 
@@ -72,6 +75,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             activity.deviceAdapter.notifyDataSetChanged();
                         }
                         break;
+                    case Content.WIFI_DEVICE_CONNECTED:
+                        activity.devicesDialog.dismiss();
+                        break;
                 }
             }
         }
@@ -83,6 +89,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
         mainHanlder = new MainHanlder(this);
         wifiAPManager = wifiAPManager == null ? new WifiAPManager(this) : wifiAPManager;
+        configuration = configuration == null ? new WifiConfiguration() : configuration;
         wifiManager = wifiManager == null ? (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE) : wifiManager;
         if (Content.selectedFileList == null) {
             Content.selectedFileList = new ArrayList<>();
@@ -266,12 +273,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         // open the scanning wifi devices dialog;
         devicesDialog = new Dialog(MainActivity.this);
         devicesDialog.setContentView(R.layout.scan_wifi_aps);
-        RecyclerView devicesList = devicesDialog.findViewById(R.id.devices_list);
-        deviceAdapter = new WifiAdapter(MainActivity.this, Content.scanResultList);
+        wifiList = devicesDialog.findViewById(R.id.devices_list);
+        deviceAdapter = new WifiAdapter(MainActivity.this, Content.scanResultList, wifiManager, configuration);
         LinearLayoutManager manager = new LinearLayoutManager(this);
         manager.setOrientation(LinearLayoutManager.VERTICAL);
-        devicesList.setLayoutManager(manager);
-        devicesList.setAdapter(deviceAdapter);
+        wifiList.setLayoutManager(manager);
+        wifiList.setAdapter(deviceAdapter);
         devicesDialog.show();
     }
 }

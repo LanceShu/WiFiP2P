@@ -19,6 +19,12 @@ public class Content {
     public static final int SCAN_WIFI_DEVICE = 5;
     public static final int CREATE_WIFI_DEVICE = 6;
     public static final int SCANNED_WIFI_AP_DEVICE = 7;
+    public static final int WIFICIPHER_WPA = 8;
+    public static final int WIFICIPHER_WEP = 9;
+    public static final int WIFICIPHER_NOPASS = 10;
+
+    public static final String defaultSSID = "WIFI_AP_TEST";
+    public static final String defaultPASS = "12345678";
 
     public static List<SendFileBean> selectedFileList;
     public static List<ScanResult> scanResultList;

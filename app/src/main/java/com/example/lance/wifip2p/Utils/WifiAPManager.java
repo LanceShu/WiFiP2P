@@ -5,6 +5,8 @@ import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
+import com.example.lance.wifip2p.Content;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.lang.reflect.Field;
@@ -20,8 +22,6 @@ import java.util.List;
 public class WifiAPManager {
     private WifiManager wifiManager;
     private Context context;
-    private final String defaultSSID = "WIFI_AP_TEST";
-    private final String defaultPASS = "12345678";
 
     public WifiAPManager(Context context) {
         this.context = context;
@@ -36,8 +36,8 @@ public class WifiAPManager {
         Method method = null;
         try {
             WifiConfiguration netConfig = new WifiConfiguration();
-            netConfig.SSID = (SSID != null ? SSID : defaultSSID);
-            netConfig.preSharedKey = (password != null ? password : defaultPASS);
+            netConfig.SSID = (SSID != null ? SSID : Content.defaultSSID);
+            netConfig.preSharedKey = (password != null ? password : Content.defaultPASS);
             netConfig.hiddenSSID = true;
             netConfig.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.OPEN);
             netConfig.allowedProtocols.set(WifiConfiguration.Protocol.RSN);

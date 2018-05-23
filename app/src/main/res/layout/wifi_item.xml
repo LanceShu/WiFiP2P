@@ -4,7 +4,7 @@
     android:layout_height="36dp"
     android:orientation="horizontal"
     android:layout_margin="6dp"
-    android:id="@+id/device_layout">
+    android:id="@+id/wifi_layout">
 
     <TextView
         android:id="@+id/wifi_name"
