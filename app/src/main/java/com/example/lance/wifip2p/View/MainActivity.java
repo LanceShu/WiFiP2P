@@ -19,6 +19,7 @@ import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.example.lance.wifip2p.Adapter.WifiAdapter;
 import com.example.lance.wifip2p.Adapter.FileAdapter;
@@ -29,10 +30,12 @@ import com.example.lance.wifip2p.DataBean.WordList;
 import com.example.lance.wifip2p.R;
 import com.example.lance.wifip2p.Receiver.WifiAPBroadcastReceiver;
 import com.example.lance.wifip2p.Utils.WifiAPManager;
+import com.example.lance.wifip2p.Utils.WifiP2pThreadPoolExecute;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -44,6 +47,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     public static List<FileBean> wordList;
     private WifiAdapter deviceAdapter;
+    private ThreadPoolExecutor executor;
 
     private ProgressDialog progressDialog;
     private Dialog devicesDialog;
@@ -76,7 +80,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         }
                         break;
                     case Content.WIFI_DEVICE_CONNECTED:
-                        activity.devicesDialog.dismiss();
+                        if (activity.progressDialog != null && activity.progressDialog.isShowing()) {
+                            activity.progressDialog.dismiss();
+                            Toast.makeText(activity, "Wifi热点已连接", Toast.LENGTH_SHORT).show();
+                        }
+                        break;
+                    case Content.WIFI_AP_OPENED:
+                        if (activity.progressDialog != null && activity.progressDialog.isShowing()) {
+                            activity.progressDialog.dismiss();
+                            Toast.makeText(activity, "Wifi热点已开启", Toast.LENGTH_SHORT).show();
+                        }
+                        break;
+                    case Content.GET_WIFI_DEVICE_IP:
+                        String device_ip = (String) msg.obj;
+                        Toast.makeText(activity, "已连接设备IP：" + device_ip, Toast.LENGTH_LONG).show();
                         break;
                 }
             }
@@ -90,6 +107,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mainHanlder = new MainHanlder(this);
         wifiAPManager = wifiAPManager == null ? new WifiAPManager(this) : wifiAPManager;
         configuration = configuration == null ? new WifiConfiguration() : configuration;
+        executor = executor == null ? WifiP2pThreadPoolExecute.getThreadPoolExecute() : executor;
         wifiManager = wifiManager == null ? (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE) : wifiManager;
         if (Content.selectedFileList == null) {
             Content.selectedFileList = new ArrayList<>();
@@ -141,6 +159,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        mainHanlder.removeCallbacksAndMessages(0);
     }
 
     private void initWight() {
@@ -159,17 +178,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         receiveFileBtn.setOnClickListener(this);
         scanWifiBtn.setOnClickListener(this);
         createWifiBtn.setOnClickListener(this);
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (;;) {
-                    if (wifiAPManager.getConnectedIP().size() > 0) {
-                        Log.e("Connected_Device", wifiAPManager.getConnectedIP().get(0));
-                        break;
-                    }
-                }
-            }
-        }).start();
     }
 
     private void CheckPermission() {
@@ -244,17 +252,46 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.receive_bt:
                 break;
             case R.id.scan_wifi_bt:
-                new Thread(new Runnable() {
+//                new Thread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        searchWifiAP();
+//                    }
+//                }).start();
+//                displayAllWifiAps();
+                if (!wifiManager.isWifiEnabled()) {
+                    wifiManager.setWifiEnabled(true);
+                }
+                progressDialog.setMessage("Connecting wifi...");
+                progressDialog.show();
+                executor.execute(new Runnable() {
                     @Override
                     public void run() {
-                        searchWifiAP();
+                        WifiConfiguration config = wifiAPManager.createWifiInfo(Content.defaultSSID, "", Content.WIFICIPHER_NOPASS);
+                        wifiAPManager.connect(wifiManager, config);
                     }
-                }).start();
-                displayAllWifiAps();
+                });
                 break;
             case R.id.create_wifi_bt:
                 if (!wifiAPManager.isWifiApEnabled()) {
-                    wifiAPManager.createAndStartWifiAp(null, null, true);
+                    progressDialog.setMessage("Opening Wifi_AP...");
+                    progressDialog.show();
+                    wifiAPManager.createWifiAp(true);
+                    executor.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            for (;;) {
+                                if (wifiAPManager.getConnectedIP().size() > 0) {
+                                    Log.e("Connected_Device", wifiAPManager.getConnectedIP().get(0));
+                                    Message message = Message.obtain();
+                                    message.what = Content.GET_WIFI_DEVICE_IP;
+                                    message.obj = wifiAPManager.getConnectedIP().get(0);
+                                    mainHanlder.sendMessage(message);
+                                    break;
+                                }
+                            }
+                        }
+                    });
                 } else {
                     wifiAPManager.closeWifiAp();
                 }
@@ -274,7 +311,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         devicesDialog = new Dialog(MainActivity.this);
         devicesDialog.setContentView(R.layout.scan_wifi_aps);
         wifiList = devicesDialog.findViewById(R.id.devices_list);
-        deviceAdapter = new WifiAdapter(MainActivity.this, Content.scanResultList, wifiManager, configuration);
+        deviceAdapter = new WifiAdapter(MainActivity.this, Content.scanResultList, wifiManager, configuration, wifiAPManager);
         LinearLayoutManager manager = new LinearLayoutManager(this);
         manager.setOrientation(LinearLayoutManager.VERTICAL);
         wifiList.setLayoutManager(manager);

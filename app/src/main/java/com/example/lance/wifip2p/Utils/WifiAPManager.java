@@ -3,9 +3,11 @@ package com.example.lance.wifip2p.Utils;
 import android.content.Context;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
+import android.os.Message;
 import android.util.Log;
 
 import com.example.lance.wifip2p.Content;
+import com.example.lance.wifip2p.View.MainActivity;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -25,11 +27,15 @@ public class WifiAPManager {
 
     public WifiAPManager(Context context) {
         this.context = context;
-        wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        wifiManager = (WifiManager) this.context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+    }
+
+    public void createWifiAp(boolean isOpen) {
+        createAndStartWifiAp(Content.defaultSSID, Content.defaultPASS, isOpen);
     }
 
     // create wifi_ap;
-    public void createAndStartWifiAp(String SSID, String password, boolean isOpen) {
+    private void createAndStartWifiAp(String SSID, String password, boolean isOpen) {
         if (wifiManager.isWifiEnabled()) {
             wifiManager.setWifiEnabled(false);
         }
@@ -38,7 +44,7 @@ public class WifiAPManager {
             WifiConfiguration netConfig = new WifiConfiguration();
             netConfig.SSID = (SSID != null ? SSID : Content.defaultSSID);
             netConfig.preSharedKey = (password != null ? password : Content.defaultPASS);
-            netConfig.hiddenSSID = true;
+//            netConfig.hiddenSSID = true;
             netConfig.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.OPEN);
             netConfig.allowedProtocols.set(WifiConfiguration.Protocol.RSN);
             netConfig.allowedProtocols.set(WifiConfiguration.Protocol.WPA);
@@ -54,6 +60,11 @@ public class WifiAPManager {
             boolean enable = (boolean) method.invoke(wifiManager, netConfig, true);
             String mess = enable ? "created" : "failure";
             Log.e("wifi_ap", mess);
+            if (enable) {
+                Message message = Message.obtain();
+                message.what = Content.WIFI_AP_OPENED;
+                MainActivity.mainHanlder.sendMessage(message);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -139,5 +150,61 @@ public class WifiAPManager {
             e.printStackTrace();
         }
         return connectedIP;
+    }
+
+    public void connect(WifiManager wifiManager, WifiConfiguration config) {
+        Log.e("wifiAP", "connecting");
+        if (config != null) {
+            int wcgID = wifiManager.addNetwork(config);
+            wifiManager.enableNetwork(wcgID, true);
+        }
+    }
+
+    public WifiConfiguration createWifiInfo(String SSID, String password, int type) {
+        WifiConfiguration configuration = new WifiConfiguration();
+        configuration.allowedAuthAlgorithms.clear();
+        configuration.allowedGroupCiphers.clear();
+        configuration.allowedKeyManagement.clear();
+        configuration.allowedPairwiseCiphers.clear();
+        configuration.allowedProtocols.clear();
+        configuration.SSID = "\"" + SSID + "\"";
+        if (type == Content.WIFICIPHER_NOPASS) {
+            configuration.wepKeys[0] = "\"" + "\"";
+            configuration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
+            configuration.wepTxKeyIndex = 0;
+        } else if (type == Content.WIFICIPHER_WEP) {
+            configuration.preSharedKey = "\"" + password + "\"";
+            configuration.hiddenSSID = true;
+            configuration.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.SHARED);
+            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.CCMP);
+            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.TKIP);
+            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.WEP40);
+            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.WEP104);
+            configuration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
+            configuration.wepTxKeyIndex = 0;
+        } else if (type == Content.WIFICIPHER_WPA) {
+            configuration.preSharedKey = "\"" + password + "\"";
+            configuration.hiddenSSID = true;
+            configuration.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.OPEN);
+            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.TKIP);
+            configuration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK);
+            configuration.allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.TKIP);
+            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.CCMP);
+            configuration.allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.CCMP);
+            configuration.status = WifiConfiguration.Status.ENABLED;
+        } else {
+            return null;
+        }
+        return configuration;
+    }
+
+    public WifiConfiguration isExsitis(WifiManager wifiManager, String SSID) {
+        List<WifiConfiguration> existingConfigs = wifiManager.getConfiguredNetworks();
+        for (WifiConfiguration configuration : existingConfigs) {
+            if (configuration.SSID.equals("\"" + SSID + "\"")) {
+                return configuration;
+            }
+        }
+        return null;
     }
 }

@@ -18,6 +18,7 @@ import android.widget.TextView;
 
 import com.example.lance.wifip2p.Content;
 import com.example.lance.wifip2p.R;
+import com.example.lance.wifip2p.Utils.WifiAPManager;
 
 import java.util.List;
 
@@ -31,12 +32,14 @@ public class WifiAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private List<ScanResult> scanResults;
     private WifiManager wifiManager;
     private WifiConfiguration config;
+    private WifiAPManager wifiAPManager;
 
-    public WifiAdapter(Context context, List<ScanResult> scanResults, WifiManager wifiManager, WifiConfiguration config) {
+    public WifiAdapter(Context context, List<ScanResult> scanResults, WifiManager wifiManager, WifiConfiguration config, WifiAPManager wifiAPManager) {
         this.context = context;
         this.scanResults = scanResults;
         this.wifiManager = wifiManager;
         this.config = config;
+        this.wifiAPManager = wifiAPManager;
     }
 
     @Override
@@ -79,8 +82,9 @@ public class WifiAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                         type = Content.WIFICIPHER_NOPASS;
                     }
                 }
-                config = isExsitis(scanResult.SSID);
+                config = wifiAPManager.isExsitis(wifiManager, scanResult.SSID);
                 if (config == null) {
+                    Log.e("type", type + "");
                     if (type != Content.WIFICIPHER_NOPASS) {
                         final EditText editText = new EditText(context);
                         final int finalType = type;
@@ -88,75 +92,19 @@ public class WifiAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                                 .setPositiveButton("确定", new DialogInterface.OnClickListener() {
                                     @Override
                                     public void onClick(DialogInterface dialogInterface, int i) {
-                                        config = createWifiInfo(scanResult.SSID, editText.getText().toString(), finalType);
-                                        connect(config);
+                                        config = wifiAPManager.createWifiInfo(scanResult.SSID, editText.getText().toString(), finalType);
+                                        wifiAPManager.connect(wifiManager, config);
                                     }
                                 }).setNegativeButton("取消", null).show();
                     } else {
-                        config = createWifiInfo(scanResult.SSID, "", type);
-                        connect(config);
+                        config = wifiAPManager.createWifiInfo(scanResult.SSID, "", type);
+                        wifiAPManager.connect(wifiManager, config);
                     }
                 } else {
-                    connect(config);
+                    wifiAPManager.connect(wifiManager, config);
                 }
             }
         });
-    }
-
-    private void connect(WifiConfiguration config) {
-        Log.e("wifiAP", "connecting");
-        if (config != null) {
-            int wcgID = wifiManager.addNetwork(config);
-            wifiManager.enableNetwork(wcgID, true);
-        }
-    }
-
-    private WifiConfiguration createWifiInfo(String SSID, String password, int type) {
-        WifiConfiguration configuration = new WifiConfiguration();
-        configuration.allowedAuthAlgorithms.clear();
-        configuration.allowedGroupCiphers.clear();
-        configuration.allowedKeyManagement.clear();
-        configuration.allowedPairwiseCiphers.clear();
-        configuration.allowedProtocols.clear();
-        configuration.SSID = "\"" + SSID + "\"";
-        if (type == Content.WIFICIPHER_NOPASS) {
-            configuration.wepKeys[0] = "\"" + "\"";
-            configuration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
-            configuration.wepTxKeyIndex = 0;
-        } else if (type == Content.WIFICIPHER_WEP) {
-            configuration.preSharedKey = "\"" + password + "\"";
-            configuration.hiddenSSID = true;
-            configuration.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.SHARED);
-            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.CCMP);
-            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.TKIP);
-            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.WEP40);
-            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.WEP104);
-            configuration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
-            configuration.wepTxKeyIndex = 0;
-        } else if (type == Content.WIFICIPHER_WPA) {
-            configuration.preSharedKey = "\"" + password + "\"";
-            configuration.hiddenSSID = true;
-            configuration.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.OPEN);
-            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.TKIP);
-            configuration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK);
-            configuration.allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.TKIP);
-            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.CCMP);
-            configuration.allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.CCMP);
-            configuration.status = WifiConfiguration.Status.ENABLED;
-        } else {
-            return null;
-        }
-        return configuration;
-    }
-
-    private WifiConfiguration isExsitis(String SSID) {
-        List<WifiConfiguration> existingConfigs = wifiManager.getConfiguredNetworks();
-        for (WifiConfiguration configuration : existingConfigs) {
-            if (configuration.SSID.equals("\"" + SSID + "\"")) {
-                return configuration;
-            }
-        }
-        return null;
     }
 
     @Override
