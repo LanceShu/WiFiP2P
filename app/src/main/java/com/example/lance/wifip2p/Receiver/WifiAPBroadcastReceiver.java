@@ -10,6 +10,7 @@ import android.os.Message;
 import android.util.Log;
 
 import com.example.lance.wifip2p.Content;
+import com.example.lance.wifip2p.Utils.MessageUtil;
 import com.example.lance.wifip2p.View.MainActivity;
 
 /**
@@ -36,9 +37,7 @@ public class WifiAPBroadcastReceiver extends BroadcastReceiver {
                     Log.e("wifi", wifiManager.getScanResults().size() + "");
                     Content.scanResultList.clear();
                     Content.scanResultList.addAll(wifiManager.getScanResults());
-                    Message message = Message.obtain();
-                    message.what = Content.SCANNED_WIFI_AP_DEVICE;
-                    MainActivity.mainHanlder.sendMessage(message);
+                    MessageUtil.sendMessageToHandler(Content.SCANNED_WIFI_AP_DEVICE, MainActivity.mainHanlder);
                     break;
                 case WifiManager.WIFI_STATE_CHANGED_ACTION:
                     int wifiState = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, 0);
@@ -56,15 +55,10 @@ public class WifiAPBroadcastReceiver extends BroadcastReceiver {
                         Log.e("wifiState", "wifi is disconnected");
                     } else if (info.getState().equals(NetworkInfo.State.CONNECTED)) {
                         WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-                        WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-                        Log.e("wifiState", "the wifi's SSID: " + wifiInfo.getSSID());
-                        Message message1 = Message.obtain();
-                        message1.what = Content.WIFI_DEVICE_CONNECTED;
-                        MainActivity.mainHanlder.sendMessage(message1);
-                        if (wifiInfo.getSSID().equals(Content.defaultSSID)) {
-                            Log.e("wifiState", "this is hotpot");
-                        } else {
-                            Log.e("wifiState", "this is wifi");
+                        if (wifiManager != null) {
+                            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+                            Log.e("wifiState", "the wifi's SSID: " + wifiInfo.getSSID());
+                            MessageUtil.sendMessageToHandler(Content.WIFI_DEVICE_CONNECTED, MainActivity.mainHanlder);
                         }
                     }
                     break;

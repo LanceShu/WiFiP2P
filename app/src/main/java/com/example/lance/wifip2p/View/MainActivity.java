@@ -29,6 +29,7 @@ import com.example.lance.wifip2p.DataBean.SendFileBean;
 import com.example.lance.wifip2p.DataBean.WordList;
 import com.example.lance.wifip2p.R;
 import com.example.lance.wifip2p.Receiver.WifiAPBroadcastReceiver;
+import com.example.lance.wifip2p.Utils.MessageUtil;
 import com.example.lance.wifip2p.Utils.WifiAPManager;
 import com.example.lance.wifip2p.Utils.WifiP2pThreadPoolExecute;
 
@@ -259,14 +260,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //                    }
 //                }).start();
 //                displayAllWifiAps();
-                if (!wifiManager.isWifiEnabled()) {
-                    wifiManager.setWifiEnabled(true);
-                }
                 progressDialog.setMessage("Connecting wifi...");
                 progressDialog.show();
                 executor.execute(new Runnable() {
                     @Override
                     public void run() {
+                        if (!wifiManager.isWifiEnabled()) {
+                            wifiManager.setWifiEnabled(true);
+                        }
                         WifiConfiguration config = wifiAPManager.createWifiInfo(Content.defaultSSID, "", Content.WIFICIPHER_NOPASS);
                         wifiAPManager.connect(wifiManager, config);
                     }
@@ -283,10 +284,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             for (;;) {
                                 if (wifiAPManager.getConnectedIP().size() > 0) {
                                     Log.e("Connected_Device", wifiAPManager.getConnectedIP().get(0));
-                                    Message message = Message.obtain();
-                                    message.what = Content.GET_WIFI_DEVICE_IP;
-                                    message.obj = wifiAPManager.getConnectedIP().get(0);
-                                    mainHanlder.sendMessage(message);
+                                    MessageUtil.sendMessageToHandler(Content.GET_WIFI_DEVICE_IP, wifiAPManager.getConnectedIP().get(0), mainHanlder);
                                     break;
                                 }
                             }
