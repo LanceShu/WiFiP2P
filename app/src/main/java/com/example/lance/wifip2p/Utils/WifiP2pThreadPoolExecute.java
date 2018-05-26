@@ -1,6 +1,5 @@
 package com.example.lance.wifip2p.Utils;
 
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -11,7 +10,6 @@ import java.util.concurrent.TimeUnit;
  */
 
 public class WifiP2pThreadPoolExecute {
-
     private static ThreadPoolExecutor executor;
     private WifiP2pThreadPoolExecute() {}
     public static ThreadPoolExecutor getThreadPoolExecute() {
