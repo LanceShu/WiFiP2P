@@ -24,6 +24,8 @@ public class Content {
     public static final int WIFICIPHER_NOPASS = 10;
     public static final int WIFI_AP_OPENED = 11;
 
+    public static boolean isConnected = false;
+
     public static final String defaultSSID = "WIFI_AP_TEST";
     public static final String defaultPASS = "12345678";
 

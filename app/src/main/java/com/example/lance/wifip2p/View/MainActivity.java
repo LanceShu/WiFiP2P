@@ -75,15 +75,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (activity != null) {
                 switch (msg.what) {
                     case Content.SCANNED_WIFI_AP_DEVICE:
-                        if (activity.deviceAdapter != null) {
-                            Log.e("adapter", Content.scanResultList.size() + "");
-                            activity.deviceAdapter.notifyDataSetChanged();
-                        }
+                        WifiConfiguration config = activity.wifiAPManager.createWifiInfo(Content.defaultSSID, ""
+                                , Content.WIFICIPHER_NOPASS);
+                        activity.wifiAPManager.connect(activity.wifiManager, config);
+                        Content.isConnected = true;
                         break;
                     case Content.WIFI_DEVICE_CONNECTED:
                         if (activity.progressDialog != null && activity.progressDialog.isShowing()) {
                             activity.progressDialog.dismiss();
                             Toast.makeText(activity, "Wifi热点已连接", Toast.LENGTH_SHORT).show();
+
                         }
                         break;
                     case Content.WIFI_AP_OPENED:
@@ -160,7 +161,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        mainHanlder.removeCallbacksAndMessages(0);
+        mainHanlder.removeCallbacksAndMessages(null);
+        Content.isConnected = false;
     }
 
     private void initWight() {
@@ -253,25 +255,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.receive_bt:
                 break;
             case R.id.scan_wifi_bt:
-//                new Thread(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        searchWifiAP();
-//                    }
-//                }).start();
-//                displayAllWifiAps();
                 progressDialog.setMessage("Connecting wifi...");
                 progressDialog.show();
-                executor.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (!wifiManager.isWifiEnabled()) {
-                            wifiManager.setWifiEnabled(true);
-                        }
-                        WifiConfiguration config = wifiAPManager.createWifiInfo(Content.defaultSSID, "", Content.WIFICIPHER_NOPASS);
-                        wifiAPManager.connect(wifiManager, config);
-                    }
-                });
+                searchWifiAP();
                 break;
             case R.id.create_wifi_bt:
                 if (!wifiAPManager.isWifiApEnabled()) {
@@ -282,9 +268,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         @Override
                         public void run() {
                             for (;;) {
-                                if (wifiAPManager.getConnectedIP().size() > 0) {
+                                if (wifiAPManager.getConnectedIP().size() > 0
+                                        && !wifiAPManager.getConnectedIP().get(0).equals("192.168.1.1")) {
                                     Log.e("Connected_Device", wifiAPManager.getConnectedIP().get(0));
-                                    MessageUtil.sendMessageToHandler(Content.GET_WIFI_DEVICE_IP, wifiAPManager.getConnectedIP().get(0), mainHanlder);
+                                    MessageUtil.sendMessageToHandler(Content.GET_WIFI_DEVICE_IP
+                                            , wifiAPManager.getConnectedIP().get(0), mainHanlder);
                                     break;
                                 }
                             }
@@ -304,7 +292,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         wifiManager.startScan();
     }
 
-    private void displayAllWifiAps() {
+    private void displayAllWifiAps()  {
         // open the scanning wifi devices dialog;
         devicesDialog = new Dialog(MainActivity.this);
         devicesDialog.setContentView(R.layout.scan_wifi_aps);

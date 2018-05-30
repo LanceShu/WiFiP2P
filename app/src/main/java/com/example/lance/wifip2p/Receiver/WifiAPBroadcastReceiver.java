@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.net.NetworkInfo;
+import android.net.wifi.ScanResult;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Message;
@@ -37,7 +38,13 @@ public class WifiAPBroadcastReceiver extends BroadcastReceiver {
                     Log.e("wifi", wifiManager.getScanResults().size() + "");
                     Content.scanResultList.clear();
                     Content.scanResultList.addAll(wifiManager.getScanResults());
-                    MessageUtil.sendMessageToHandler(Content.SCANNED_WIFI_AP_DEVICE, MainActivity.mainHanlder);
+                    if (!Content.isConnected) {
+                        for (ScanResult scanResult : Content.scanResultList) {
+                            if (scanResult.SSID.equals(Content.defaultSSID)) {
+                                MessageUtil.sendMessageToHandler(Content.SCANNED_WIFI_AP_DEVICE, MainActivity.mainHanlder);
+                            }
+                        }
+                    }
                     break;
                 case WifiManager.WIFI_STATE_CHANGED_ACTION:
                     int wifiState = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, 0);
