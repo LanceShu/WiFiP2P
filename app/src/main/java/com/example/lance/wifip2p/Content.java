@@ -5,6 +5,7 @@ import android.net.wifi.ScanResult;
 import com.example.lance.wifip2p.DataBean.SendFileBean;
 
 import java.util.List;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Created by Lance
@@ -31,4 +32,5 @@ public class Content {
 
     public static List<SendFileBean> selectedFileList;
     public static List<ScanResult> scanResultList;
+    public static LinkedBlockingQueue<SendFileBean> sendFileList;
 }

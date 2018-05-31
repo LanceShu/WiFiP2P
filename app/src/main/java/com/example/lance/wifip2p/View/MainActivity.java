@@ -30,12 +30,15 @@ import com.example.lance.wifip2p.DataBean.WordList;
 import com.example.lance.wifip2p.R;
 import com.example.lance.wifip2p.Receiver.WifiAPBroadcastReceiver;
 import com.example.lance.wifip2p.Utils.MessageUtil;
+import com.example.lance.wifip2p.Utils.SocketUtil;
 import com.example.lance.wifip2p.Utils.WifiAPManager;
 import com.example.lance.wifip2p.Utils.WifiP2pThreadPoolExecute;
 
 import java.lang.ref.WeakReference;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -49,6 +52,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public static List<FileBean> wordList;
     private WifiAdapter deviceAdapter;
     private ThreadPoolExecutor executor;
+    public static boolean isConnected = false;
+    private static String serverSocketIP = "";
 
     private ProgressDialog progressDialog;
     private Dialog devicesDialog;
@@ -84,7 +89,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         if (activity.progressDialog != null && activity.progressDialog.isShowing()) {
                             activity.progressDialog.dismiss();
                             Toast.makeText(activity, "Wifi热点已连接", Toast.LENGTH_SHORT).show();
-
+                            // the device connected wifi_ap act as a server which send files;
+                            activity.executor.execute(new Runnable() {
+                                @Override
+                                public void run() {
+                                    SocketUtil.createServerSocket();
+                                }
+                            });
                         }
                         break;
                     case Content.WIFI_AP_OPENED:
@@ -95,7 +106,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         break;
                     case Content.GET_WIFI_DEVICE_IP:
                         String device_ip = (String) msg.obj;
+                        serverSocketIP = device_ip;
                         Toast.makeText(activity, "已连接设备IP：" + device_ip, Toast.LENGTH_LONG).show();
+                        // the device opened wifi_ap act as a client which receive files;
+                        activity.executor.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                SocketUtil.createClientSocket(serverSocketIP);
+                            }
+                        });
                         break;
                 }
             }
@@ -107,10 +126,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mainHanlder = new MainHanlder(this);
+        // Init Collections;
+        initCollection();
+        // Dynamic application permissions;
+        CheckPermission();
+        // Init all wights;
+        initWight();
+    }
+
+    private void initCollection() {
         wifiAPManager = wifiAPManager == null ? new WifiAPManager(this) : wifiAPManager;
         configuration = configuration == null ? new WifiConfiguration() : configuration;
         executor = executor == null ? WifiP2pThreadPoolExecute.getThreadPoolExecute() : executor;
         wifiManager = wifiManager == null ? (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE) : wifiManager;
+        Content.sendFileList = Content.sendFileList == null ? new LinkedBlockingQueue<SendFileBean>() : Content.sendFileList;
         if (Content.selectedFileList == null) {
             Content.selectedFileList = new ArrayList<>();
         } else {
@@ -121,10 +150,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } else {
             Content.scanResultList.clear();
         }
-        // Dynamic application permissions;
-        CheckPermission();
-        // Init all wights;
-        initWight();
     }
 
     @Override
@@ -248,8 +273,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.send_bt:
-                for (SendFileBean fileBean : Content.selectedFileList) {
-                    Log.e("SendFileBean", fileBean.getSendName() + "  " + fileBean.getSendPath() + "  " + fileBean.getSendSize());
+                if (isConnected) {
+                    for (SendFileBean fileBean : Content.selectedFileList) {
+                        Log.e("SendFileBean", fileBean.getSendName() + "  " + fileBean.getSendPath() + "  " + fileBean.getSendSize());
+                        Content.sendFileList.clear();
+                        Content.sendFileList.addAll(Content.selectedFileList);
+                    }
+                } else {
+                    Toast.makeText(this, "Unconnected wifi", Toast.LENGTH_SHORT).show();
                 }
                 break;
             case R.id.receive_bt:

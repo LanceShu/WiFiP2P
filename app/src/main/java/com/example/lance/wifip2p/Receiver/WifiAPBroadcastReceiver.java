@@ -60,11 +60,13 @@ public class WifiAPBroadcastReceiver extends BroadcastReceiver {
                     NetworkInfo info = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
                     if (info.getState().equals(NetworkInfo.State.DISCONNECTED)) {
                         Log.e("wifiState", "wifi is disconnected");
+                        MainActivity.isConnected = false;
                     } else if (info.getState().equals(NetworkInfo.State.CONNECTED)) {
                         WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
                         if (wifiManager != null) {
                             WifiInfo wifiInfo = wifiManager.getConnectionInfo();
                             Log.e("wifiState", "the wifi's SSID: " + wifiInfo.getSSID());
+                            MainActivity.isConnected = true;
                             MessageUtil.sendMessageToHandler(Content.WIFI_DEVICE_CONNECTED, MainActivity.mainHanlder);
                         }
                     }
